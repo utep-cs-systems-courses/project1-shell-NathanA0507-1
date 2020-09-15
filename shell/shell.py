@@ -1,10 +1,14 @@
+#! /usr/bin/env python3
 import os, sys, re, time
-
-
 while True:
     # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
     # This was done in an attempt to make the shell more readable
-    args = input("\033[1;34;40m %s\x1b[0m$ " % os.getcwd())
+
+    prompt = "\033[1;34;40m %s\x1b[0m$ " % os.getcwd()
+    if 'PS1' in os.environ:
+        prompt = os.environ['PS1']
+
+    args = input(prompt)
 
     args = args.split(' ')
 
@@ -28,13 +32,21 @@ while True:
             os.write(2, ("fork failed, returning %d\n" % rc).encode())
             sys.exit(1)
         elif rc == 0:                   # child
+            # This try/except will handle output redirection
             try:
                 if '>' in args:
                     os.close(1)  # redirect child's stdout
                     os.open(args[args.index('>')+1], os.O_CREAT | os.O_WRONLY)
                     os.set_inheritable(1, True)
-                    args.remove(args[args.index('>')+1])  # lol what does this even mean
-                    args.remove('>')
+                    args.remove(args[args.index('>')+1])  # Remove the file name from the args list
+                    args.remove('>')  # Remove the '>' character from the arguments list
+
+                if '<' in args:
+                    os.close(0)  # redirect child's stdout
+                    os.open(args[args.index('<')+1], os.O_WRONLY)
+                    os.set_inheritable(0, True)
+                    args.remove('<')  # Remove the '<' character from the arguments list
+
             except IndexError:
                 os.write(2, "Invalid input for redirection\n".encode())
 
