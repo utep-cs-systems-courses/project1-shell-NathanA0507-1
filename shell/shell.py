@@ -12,6 +12,8 @@ while True:
 
     args = args.split(' ')
 
+    print("Args: ", args)
+
     # print(args)
 
     if args[0].lower() == 'exit':
@@ -24,6 +26,9 @@ while True:
             os.write(2, ("Directory %s not found\n" % args[1]).encode())
         except IndexError:
             os.write(2, "Must write a directory to swap to\n".encode())
+
+    elif "|" in args:
+        print("Piping here")
 
     else:
         rc = os.fork()
@@ -43,7 +48,8 @@ while True:
 
                 if '<' in args:
                     os.close(0)  # redirect child's stdout
-                    os.open(args[args.index('<')+1], os.O_WRONLY)
+                    os.open(args[args.index('<')+1], os.O_RDONLY)
+                    args.remove(args[args.index('<') + 1])
                     os.set_inheritable(0, True)
                     args.remove('<')  # Remove the '<' character from the arguments list
 
@@ -61,6 +67,7 @@ while True:
             os.write(2, ("%s: Command not found\n" % args[0]).encode())
             quit(1)
         else:                           # parent (forked ok)
-            val = os.wait()
-            if val[1] != 0:
-                os.write(2, ("Program terminated with exit code: %d\n" % val[1]).encode())
+            if args[-1] != "&":
+                val = os.wait()
+                if val[1] != 0 and val[1] != 256:
+                    os.write(2, ("Program terminated with exit code: %d\n" % val[1]).encode())
