@@ -59,7 +59,7 @@ while True:
     except EOFError:
         quit(1)
     if len(args) == 0:
-        quit(1)
+        continue
 
     if args[0].lower() == 'exit':
         os.write(2, "Goodbye!\n".encode())
