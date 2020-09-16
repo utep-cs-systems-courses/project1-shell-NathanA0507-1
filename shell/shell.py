@@ -68,6 +68,7 @@ def pipe(args):
             pipe(readCommands)
         run_process(readCommands)  # Run the process as normal
         os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
+        sys.exit(1)
 
 while True:
     # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
