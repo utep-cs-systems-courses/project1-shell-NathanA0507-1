@@ -111,10 +111,10 @@ while True:
     else:
         rc = os.fork()
 
-        wait = False
+        wait = True
 
         if "&" in args:
-            wait = True
+            wait = False
             args.remove("&")
 
         if rc < 0:  # check if fork was successful
