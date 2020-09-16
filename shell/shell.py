@@ -4,7 +4,6 @@ import os, sys, re
 
 def run_process(args):
     #  this try/except hands IO redirection
-    print(args)
     try:
         if '>' in args:  # Output redirection
             os.close(1)  # redirect child's stdout
@@ -44,6 +43,32 @@ def run_process(args):
     quit(1)
 
 
+def pipe(args):
+    writeCommands = args[0:args.index("|")]
+    readCommands = args[args.index("|") + 1:]
+    pr, pw = os.pipe()
+    rc = os.fork()
+    if rc < 0:
+        os.write(2, ("fork failed, returning %d\n" % rc).encode())
+        sys.exit(1)
+    elif rc == 0:
+        os.close(1)  # close fd 1 (output)
+        os.dup2(pw, 1)  # duplicate pw in fd1
+        for fd in (pr, pw):
+            os.close(fd)  # close pw & pr
+        run_process(writeCommands)  # Run the process as normal
+        os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
+        sys.exit(1)
+    else:
+        os.close(0)  # close fd 0 (input)
+        os.dup2(pr, 0)  # dup pr in fd0
+        for fd in (pw, pr):
+            os.close(fd)
+        if "|" in readCommands:
+            pipe(readCommands)
+        run_process(readCommands)  # Run the process as normal
+        os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
+
 while True:
     # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
     # This was done in an attempt to make the shell more readable
@@ -54,7 +79,6 @@ while True:
 
     try:
         args = [str(n) for n in input(prompt).split()]
-        # print(args)
 
     except EOFError:
         quit(1)
@@ -79,29 +103,9 @@ while True:
             os.write(2, ("fork failed, returning %d\n" % rc).encode())
             sys.exit(1)
         elif fork1 == 0:
-            writeCommands = args[0:args.index("|")]
-            readCommands = args[args.index("|") + 1:]
-            pr, pw = os.pipe()
-            rc = os.fork()
+            pipe(args)
 
-            if rc < 0:
-                os.write(2, ("fork failed, returning %d\n" % rc).encode())
-                sys.exit(1)
-            elif rc == 0:
-                os.close(1)  # close fd 1 (output)
-                os.dup2(pw, 1)  # duplicate pw in fd1
-                for fd in (pr, pw):
-                    os.close(fd)  # close pw & pr
-                run_process(writeCommands)  # Run the process as normal
-                os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
-                sys.exit(1)
-            else:
-                os.close(0)  # close fd 0 (input)
-                os.dup2(pr, 0)  # dup pr in fd0
-                for fd in (pw, pr):
-                    os.close(fd)
-                run_process(readCommands)  # Run the process as normal
-                os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
+
         else:  # parent (forked ok)
             if args[-1] != "&":  # If the command is to be run in the background don't wait, otherwise wait
                 val = os.wait()
@@ -111,6 +115,7 @@ while True:
     else:
         rc = os.fork()
 
+        # By default, the shell will wait for a program to finish. If & is present, it will not
         wait = True
 
         if "&" in args:
