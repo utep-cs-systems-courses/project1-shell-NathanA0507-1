@@ -4,6 +4,7 @@ import os, sys, re
 
 def run_process(args):
     #  this try/except hands IO redirection
+    print(args)
     try:
         if '>' in args:  # Output redirection
             os.close(1)  # redirect child's stdout
@@ -21,6 +22,15 @@ def run_process(args):
 
     except IndexError:
         os.write(2, "Invalid input for redirection\n".encode())
+    try:
+        if args[0][0] == '/':
+            os.execve(args[0], args, os.environ)  # try to exec program
+    except FileNotFoundError:  # ...expected
+        pass
+    except IndexError:
+        quit(1)
+    except Exception: #  If the program doesn't work for some other reason just quit
+        quit(1)
 
     for dir in re.split(":", os.environ['PATH']):  # try each directory in path
         program = "%s/%s" % (dir, args[0])
@@ -42,9 +52,14 @@ while True:
     if 'PS1' in os.environ:
         prompt = os.environ['PS1']
 
-    args = input(prompt)
+    try:
+        args = [str(n) for n in input(prompt).split()]
+        # print(args)
 
-    args = args.split(' ')
+    except EOFError:
+        quit(1)
+    if len(args) == 0:
+        quit(1)
 
     if args[0].lower() == 'exit':
         os.write(2, "Goodbye!\n".encode())
@@ -70,7 +85,7 @@ while True:
             rc = os.fork()
 
             if rc < 0:
-                os.write(2, ("fork failed, returing %d\n" % rc).encode())
+                os.write(2, ("fork failed, returning %d\n" % rc).encode())
                 sys.exit(1)
             elif rc == 0:
                 os.close(1)  # close fd 1 (output)
@@ -96,13 +111,19 @@ while True:
     else:
         rc = os.fork()
 
+        wait = False
+
+        if "&" in args:
+            wait = True
+            args.remove("&")
+
         if rc < 0:  # check if fork was successful
             os.write(2, ("fork failed, returning %d\n" % rc).encode())
             sys.exit(1)
         elif rc == 0:  # child
             run_process(args)
         else:  # parent (forked ok)
-            if args[-1] != "&":
+            if wait:
                 val = os.wait()
                 if val[1] != 0 and val[1] != 256:
                     os.write(2, ("Program terminated with exit code: %d\n" % val[1]).encode())
