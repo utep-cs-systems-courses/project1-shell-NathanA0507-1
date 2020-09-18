@@ -79,7 +79,9 @@ while True:
         prompt = os.environ['PS1']
 
     try:
-        args = [str(n) for n in input(prompt).split()]
+        os.write(1, prompt.encode())
+
+        args = input(prompt).split()
 
     except EOFError:
         quit(1)
