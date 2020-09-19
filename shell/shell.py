@@ -94,8 +94,6 @@ def command_handler(args):
             sys.exit(1)
         elif fork1 == 0:
             pipe(args)
-
-
         else:  # parent (forked ok)
             if args[-1] != "&":  # If the command is to be run in the background don't wait, otherwise wait
                 val = os.wait()
@@ -124,10 +122,6 @@ def command_handler(args):
                     os.write(2, ("Program terminated with exit code: %d\n" % val[1]).encode())
 
 
-
-
-
-
 while True:
     # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
     # This was done in an attempt to make the shell more readable
@@ -138,20 +132,18 @@ while True:
 
     try:
         os.write(1, prompt.encode())
-        args = " "  # give the args some initial value so the loop starts (will be removed later with split())
-        next_command = []
-        while args != "":  # While there are still arguments
-            args = args + os.read(0, 1024).decode()  # append new arguments to the previous command
-            if "\n" in args:
-                args = args.split("\n")  # split based on newline characters
-                next_command = next_command + args[1:]  # args[1] is the next command, so we ignore it for now
-                args = args[0].split()  # We know that args[0] is all our current command so we split and send
-                command_handler(args)  # This method handles forking/exec/checking for IO redirect symbols, etc
-                while len(next_command[0]) == 0 and len(next_command > 1):
-                    next_command = next_command[1:]
-                args = next_command  # we update args to now be the next command that we're working with
-                print("help", next_command)
-                next_command = next_command[1:]
+        args = os.read(0, 10000)
+
+        if len(args) == 0:
+            break
+        args = args.decode().split("\n")
+
+        # if it's empty, continue
+        if not args:
+            continue
+
+        for arg in args:
+            command_handler(arg.split())
 
     except EOFError:
         quit(1)
