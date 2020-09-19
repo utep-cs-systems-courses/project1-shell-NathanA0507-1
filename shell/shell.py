@@ -139,14 +139,19 @@ while True:
     try:
         os.write(1, prompt.encode())
         args = " "  # give the args some initial value so the loop starts (will be removed later with split())
+        next_command = []
         while args != "":  # While there are still arguments
             args = args + os.read(0, 1024).decode()  # append new arguments to the previous command
             if "\n" in args:
                 args = args.split("\n")  # split based on newline characters
-                next_command = args[1]  # args[1] is the next command, so we ignore it for now
+                next_command = next_command + args[1:]  # args[1] is the next command, so we ignore it for now
                 args = args[0].split()  # We know that args[0] is all our current command so we split and send
                 command_handler(args)  # This method handles forking/exec/checking for IO redirect symbols, etc
+                while len(next_command[0]) == 0 and len(next_command > 1):
+                    next_command = next_command[1:]
                 args = next_command  # we update args to now be the next command that we're working with
+                print("help", next_command)
+                next_command = next_command[1:]
 
     except EOFError:
         quit(1)
