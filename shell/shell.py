@@ -70,23 +70,10 @@ def pipe(args):
         os.write(2, ("Could not exec %s\n" % writeCommands[0]).encode())
         sys.exit(1)
 
-while True:
-    # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
-    # This was done in an attempt to make the shell more readable
 
-    prompt = "\033[1;34;40m %s\x1b[0m$ " % os.getcwd()
-    if 'PS1' in os.environ:
-        prompt = os.environ['PS1']
-
-    try:
-        os.write(1, prompt.encode())
-
-        args = input(prompt).split()
-
-    except EOFError:
-        quit(1)
+def command_handler(args):
     if len(args) == 0:
-        continue
+        return
 
     if args[0].lower() == 'exit':
         os.write(2, "Goodbye!\n".encode())
@@ -103,7 +90,7 @@ while True:
         # fork1 ensures that the shell keeps running after the pipe occurs
         fork1 = os.fork()
         if fork1 < 0:
-            os.write(2, ("fork failed, returning %d\n" % rc).encode())
+            os.write(2, ("fork failed, returning %d\n" % fork1).encode())
             sys.exit(1)
         elif fork1 == 0:
             pipe(args)
@@ -135,3 +122,31 @@ while True:
                 val = os.wait()
                 if val[1] != 0 and val[1] != 256:
                     os.write(2, ("Program terminated with exit code: %d\n" % val[1]).encode())
+
+
+
+
+
+
+while True:
+    # \033[1;34;40m changes the color to blue and \x1b[0m changes it back to normal
+    # This was done in an attempt to make the shell more readable
+
+    prompt = "\033[1;34;40m %s\x1b[0m$ " % os.getcwd()
+    if 'PS1' in os.environ:
+        prompt = os.environ['PS1']
+
+    try:
+        os.write(1, prompt.encode())
+        args = " "  # give the args some initial value so the loop starts (will be removed later with split())
+        while args != "":  # While there are still arguments
+            args = args + os.read(0, 1024).decode()  # append new arguments to the previous command
+            if "\n" in args:
+                args = args.split("\n")  # split based on newline characters
+                next_command = args[1]  # args[1] is the next command, so we ignore it for now
+                args = args[0].split()  # We know that args[0] is all our current command so we split and send
+                command_handler(args)  # This method handles forking/exec/checking for IO redirect symbols, etc
+                args = next_command  # we update args to now be the next command that we're working with
+
+    except EOFError:
+        quit(1)
